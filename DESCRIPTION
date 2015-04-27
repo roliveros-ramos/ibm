@@ -1,0 +1,12 @@
+Package: ibm
+Type: Package
+Title: Individual Based Models in R
+Version: 0.1
+Date: 2015-04-27
+Author: Ricardo Oliveros-Ramos
+Maintainer: Ricardo Oliveros-Ramos
+   <ricardo.oliveros@gmail.com>
+Description: Rcpp tools for the simulation of Individual Based models in R 
+License: GPL (>= 2)
+Imports: Rcpp (>= 0.11.5)
+LinkingTo: Rcpp
