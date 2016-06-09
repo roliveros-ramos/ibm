@@ -3,10 +3,10 @@ Version: 0.1.0
 Authors@R: c(
     person("Ricardo", "Oliveros-Ramos", email="ricardo.oliveros@gmail.com", role=c("aut", "cre")))
 Title: Individual Based Models in R
-Description: This package implements some (simple) Individual Based 
-  Models and provide some methods to create new ones, particularly for 
-  population dynamics models (reproduction, mortality and movement). The 
-  basic operations for the simulations are implemented in Rcpp for speed.
+Description: Implementation of some (simple) Individual Based Models and methods
+  to create new ones, particularly for population dynamics models (reproduction, 
+  mortality and movement). The basic operations for the simulations are 
+  implemented in Rcpp for speed.
 Depends:
     R (>= 2.15)
 Imports:
