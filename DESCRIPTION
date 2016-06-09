@@ -3,13 +3,18 @@ Version: 0.1.0
 Authors@R: c(
     person("Ricardo", "Oliveros-Ramos", email="ricardo.oliveros@gmail.com", role=c("aut", "cre")))
 Title: Individual Based Models in R
-Description: Tools for the simulation of Individual Based models in R.
-Depends: 
-  R (>= 2.15)
+Description: This package implements some (simple) Individual Based 
+  Models and provide some methods to create new ones, particularly for 
+  population dynamics models (reproduction, mortality and movement). The 
+  basic operations for the simulations are implemented in Rcpp for speed.
+Depends:
+    R (>= 2.15)
 Imports:
-  Rcpp (>= 0.11.5)
+    Rcpp (>= 0.11.5),
+    stats,
+    graphics
 License: GPL-2
 URL: http://roliveros-ramos.github.io/ibm
 BugReports: https://github.com/roliveros-ramos/ibm/issues
 LinkingTo: Rcpp
-
+RoxygenNote: 5.0.1

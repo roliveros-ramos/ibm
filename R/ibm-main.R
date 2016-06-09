@@ -1,15 +1,15 @@
 # Individual Based Models in R --------------------------------------------
 
-#' Individual Based Models in R
-#' 
-#' Individual Based Models in R
-#' 
+#' @title Individual based models in R
+#' @description This package implements some (simple) Individual Based
+#' Models and provide some methods to create new ones, particularly for
+#' population dynamics models (reproduction, mortality and movement). The
+#' basic operations for the simulations are implemented in Rcpp for speed.
 #' @name ibm-package
 #' @aliases ibm-package ibm
 #' @docType package
-#' @author Ricardo Oliveros-Ramos Maintainer: Ricardo Oliveros-Ramos
+#' @author Ricardo Oliveros-Ramos
 #' <ricardo.oliveros@@gmail.com>
-#' @references ibm
 #' @keywords ibm, individual based models, agent based models
 #' @examples
 #' \dontrun{

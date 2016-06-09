@@ -4,9 +4,12 @@
 \name{ibm-package}
 \alias{ibm}
 \alias{ibm-package}
-\title{Individual Based Models in R}
+\title{Individual based models in R}
 \description{
-Individual Based Models in R
+This package implements some (simple) Individual Based
+Models and provide some methods to create new ones, particularly for
+population dynamics models (reproduction, mortality and movement). The
+basic operations for the simulations are implemented in Rcpp for speed.
 }
 \examples{
 \dontrun{
@@ -21,11 +24,8 @@ plot(sim)
 } 
 }
 \author{
-Ricardo Oliveros-Ramos Maintainer: Ricardo Oliveros-Ramos
+Ricardo Oliveros-Ramos
 <ricardo.oliveros@gmail.com>
-}
-\references{
-ibm
 }
 \keyword{agent}
 \keyword{based}

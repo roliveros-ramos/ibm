@@ -162,7 +162,7 @@ plot.ibm.LLV = function(x, alpha=0.95, nmax=10, ...) {
   # pred
   plot.new()
   plot.window(xlim=pred$xlim, ylim=pred$ylim)
-  matplot(pred$rep, col="grey", type="l", lty=1, add=TRUE)
+  matlines(pred$rep, col="grey", lty=1)
   lines(pred$median, col="blue", lwd=2)
   lines(pred$ll, col="blue", lty=3)
   lines(pred$ul, col="blue", lty=3) 
