@@ -1,184 +1,181 @@
-
 # Main function -----------------------------------------------------------
-
-
-.PredatorPreyModel = function(par, T) {
-  if(!requireNamespace("deSolve", quietly = TRUE)) 
-    stop("You need to install the 'deSolve' package.")# check on hadley
-  # par is a list with 'alpha', 'beta' 'gamma', 'sd' and 'mu_ini'.
-  LV = function(t, y, parms, ...) {
-    r = parms$r
-    l = parms$l
-    alpha = parms$alpha
-    gamma = parms$gamma
-    K = parms$K
-    dN = r*y[1]*(1-(y[1]/K)) - alpha*y[1]*y[2]
-    dP = -l*y[2] + gamma*alpha*y[1]*y[2]
-    return(list(c(dN, dP)))
+#' @title Lotka-Volterra with local predation interactions 
+#' @description This function simulates several trajectories for a 
+#' Lotka-Volterra model with local predation interactions as decribed
+#' in Brigatti et al. (2009).
+#' 
+#' @param par A list containing the parameters to run the model, currently
+#' the growth rate of prey (r), the mortality rate of predator (l), predation
+#' interaction parameters (alpha and beta), diffusion rates (D), diameters of 
+#' local interaction (L) and initial population size (initial). For D, L and
+#' initial population, a list with two values (named N and P) is required.
+#' @param T Time horizon, number of time steps to be simulated. 
+#' @param replicates Number of replicates (trajectories) to be simulated.
+#' @param  dim Spatial dimension for the space. Can be 1, 2 or 3.
+#' @param periodic Spatial boundary conditions. If \code{periodic} is set to 
+#' \code{TRUE}, the space is a torus. If set to \code{FALSE}, the boundaries 
+#' are reflective.
+#' @param spatial Boolean, should spatial outputs (position of individuals) to 
+#' be saved?
+#' @param verbose Boolean, to print population sizes by step?
+#' @param maxpop Maximum population size. If predator or prey population size
+#' get bigger, the simulation ends.
+#' @return A list with the following elements:
+#' \item{N}{A matrix with prey population sizes by time (rows) and replicates (columns)}
+#' \item{P}{A matrix with predator population sizes by time (rows) and replicates (columns)} 
+#' \item{pop}{Prey and predator positions by time, if \code{spatial} is \code{TRUE}} 
+#' @author Ricardo Oliveros--Ramos
+#' @references Brigatti et al. 2009.
+#' @keywords Lotka-volterra local interactions
+#' @examples
+#' \dontrun{
+#' set.seed(880820)
+#' par = list(alpha=5e-4, beta=5e-4, r=0.1, m=0.05, D=list(N=8e-5, P=8e-5), 
+#' L=list(N=0.2, P=0.2))
+#' N0 = with(par, m/(2*beta*L$P))
+#' P0 = with(par, r/(2*alpha*L$N))
+#' par$initial = list(N=round(N0), P=round(P0))
+#' sim = localLotkaVolterra(par, T=240, replicates=100, maxpop = 1e4)
+#' plot(sim)
+#' } 
+#' @export
+localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE, 
+                              spatial=FALSE, verbose=FALSE, maxpop=1e6) {
+  
+  if(isTRUE(spatial) & replicates!=1)
+    stop("Spatial outputs only available for 1 replicate.")
+  
+  N = array(dim=c(T+1, replicates))
+  P = array(dim=c(T+1, replicates))
+  
+  for(irep in seq_len(replicates)) {
+    xtime = Sys.time()
+    sim = .localLotkaVolterra(par=par, T=T, dim=dim, periodic=periodic, 
+                              spatial=spatial, verbose=FALSE, maxpop=1e6) 
+    xtime = c(Sys.time() - xtime)
+    N[, irep] = sim$N  
+    P[, irep] = sim$P  
+    cat(sprintf("Replicate %d - Ellapsed %0.2fs\n", irep, xtime))
+    
   }
-  times = seq(0, T)
-  y0 = c(par$initial$N, par$initial$P)
-  sol = deSolve::ode(y=y0, times=times, func=LV, parms=par, method="ode45")
-  out = as.list(as.data.frame(sol[,-1]))
-  names(out) = c("prey", "predator")
-  out$prey[is.na(out$prey)] = 0
-  out$predator[is.na(out$predator)] = 0
-  return(out)
+  
+  output = list(N=N, P=P)
+  class(output) = c("ibm.LLV", class(output))
+  return(output)
 }
 
+# One trajectory ----------------------------------------------------------
+.localLotkaVolterra = function(par, T, dim=1, periodic=TRUE, spatial=FALSE, 
+                               verbose=FALSE, maxpop=1e6) {
+  
 
-
-.localLotkaVolterra = function(par, dim=1, periodic=TRUE, plot=FALSE, delay=0.1) {
-  
-  par = list(initial=list(N=100, P=10), 
-             D=list(N, P) )
-  
-  K 		= constants[1]
-  T 		= constants[2]
-
-  r0 	= parameters[1,1] # maximal natality rate - prey
-  m0 	= parameters[2,1] # natural mortality rate - predator
-  
-  alpha 	= 10^(-parameters[1,2])
-  beta 	= 10^(-parameters[2,2])
-  
-  DN 	= parameters[1,3] # diffusion coefficient prey
-  DP 	= parameters[2,3] # diffusion coefficiente predator 
-  
-  R1 	= parameters[1,4] # prey
-  R2 	= parameters[2,4] # predator
-  
-  N.initial = as.integer(parameters[1,5])
-  P.initial = as.integer(parameters[2,5])
-  
-  sdN = sqrt(2*DN)
-  sdP = sqrt(2*DP)
-  
-  brownian = match.fun(paste("brownian.", dim,"D",sep=""))
-  
-  boundaries = if(periodic) "toro" else "reflejo"
+  par$sd = lapply(par$D, FUN = function(x) sqrt(2*x))
   
   # Initializing population vectors
   
-  N = numeric(T)
-  P = numeric(T)
+  N = array(dim=T+1)
+  P = array(dim=T+1)
+  pop = NULL
   
-  N[1] = N.initial
-  P[1] = P.initial
+  N[1] = par$initial$N
+  P[1] = par$initial$P
   
   # Initializing individuals positions
-  pop.N.ini = pop.initial(N=N.initial,n=n)
-  pop.P.ini = pop.initial(N=P.initial,n=n)
+  tpop = list()
+  tpop$N = initializePopulation(N=par$initial$N, n=dim, maxpop=maxpop)
+  tpop$P = initializePopulation(N=par$initial$P, n=dim, maxpop=maxpop)
+
+  if(isTRUE(spatial)) {
+    pop = array(dim=c(maxpop, dim, 2, T+1))
+    pop[, , 1, 1] = tpop$N
+    pop[, , 2, 1] = tpop$P
+  }
   
-  pop.N = pop.N.ini
-  pop.P = pop.P.ini
+  for(t in 1:T) {
+   
+    # diffusion
+    tpop = diffusion(tpop, sd=par$sd, N=par$initial)
+    tpop = boundaries(tpop, periodic=periodic)
+    
+    # (local) predation
+    predation = localPredationInteractions(pop=tpop, R=par$L, N=N[t], P=P[t])
+    
+    newN  = reproduction(N[t], rates=par$r)    
+    newP  = reproduction(P[t], rates=par$beta*predation$PN)
+    
+    survN = mortality(N[t], rates=par$alpha*predation$NP, survivors=TRUE)
+    survP = mortality(P[t], rates=par$m, survivors=TRUE)
   
-  if(isTRUE(plot)) plot.pop(N=N,P=P,pop.N=pop.N,pop.P=pop.P,dim=n,delay=delay)
-  
-  dem = matrix(nrow=T, ncol=4)
-  
-  for(t in 2:T) {
-    pred = local.int(posx=pop.N,posy=pop.P,R1=R1,R2=R2)
-    NP = pred$x 		# number of predators near to each prey
-    PN = pred$y		# number of preys near to each predator
+    # saving outputs
+    N[t+1] = length(survN) + length(newN) 
+    P[t+1] = length(survP) + length(newP)
     
-    r = rates(r0) 		# natality prey
-    s = rates(alpha*NP)	# mortality prey
-    l = rates(beta*PN) 	# natality predator
-    m = rates(m0) 		# mortality predator
+    if(all(N[t+1]==0, P[t+1]==0)) break
+    if(any(N[t+1]>maxpop, P[t+1]>maxpop)) break
     
-    sim.N = LV.ibm(pop=pop.N, natality=r, mortality=s, sd=sdN, K=K, dim=n, dd=TRUE)		# prey dynamics
-    sim.P = LV.ibm(pop=pop.P, natality=l, mortality=m, sd=sdP, K=K, dim=n, dd=FALSE)		# predator dynamics
+    if(N[t+1]>nrow(tpop$N)) tpop$N = updateMatrixSize(x=tpop$N, n=N[t+1], max=maxpop)
+    if(P[t+1]>nrow(tpop$P)) tpop$P = updateMatrixSize(x=tpop$P, n=P[t+1], max=maxpop)
     
-    pop.N = sim.N$pop
-    pop.P = sim.P$pop 
+    tpop$N[seq_len(N[t+1]), ] = tpop$N[c(survN, newN), ]
+    tpop$P[seq_len(P[t+1]), ] = tpop$P[c(survP, newP), ]
+   
+    if(N[t+1]<N[t]) tpop$N[seq(N[t+1]+1, N[t]), ] = NA
+    if(P[t+1]<P[t]) tpop$P[seq(P[t+1]+1, P[t]), ] = NA
+      
+    if(isTRUE(spatial)) {
+      pop[, , 1, t+1] = tpop$N
+      pop[, , 2, t+1] = tpop$P
+    }
     
-    N[t] = length(pop.N)/n  	
-    P[t] = length(pop.P)/n  	
-  
-    diffusion = function(x, sd, simetric=TRUE) {
-      out = brownian(x, sd=sd)
-      if(isTRUE(simetric)) out = toro(out)
-      return(out)
-    } 
-    
-    pop = brownian(pos=pop, sd=sd)
-    pop = toro(x=pop)	
-    
-    if(isTRUE(plot)) plot.pop(N=N,P=P,pop.N=pop.N,pop.P=pop.P,dim=n,delay=delay)
+    if(isTRUE(verbose)) {
+      cat("t=", t, ", N=", N[t+1], ", P=", P[t+1],"\n")
+    }
     
   }
   
-  ######## OUTPUTS ############
-  
-  output = list(#
-    prey 		= N, 		# 1
-    predator 	= P, 		# 2
-    # end of calibration variables
-    pop.N		= pop.N,	# 3
-    pop.P		= pop.P	# 4
-  )
-  
+  xlim = max(N, P, na.rm=TRUE)
+   
+  output = list(N = as.numeric(N), P = as.numeric(P), pop=pop[xlim, , , ])
   return(output)
   
 }
 
 
-# Generate simulated data -------------------------------------------------
+# methods -----------------------------------------------------------------
 
-.generatePredatorPreyModel = function(path, r=0.5, l=0.2, alpha=0.1, gamma=0.1, K=100, T=100, 
-                                      N0=10, P0=1, ...) {
+#' @export
+plot.ibm.LLV = function(x, alpha=0.95, nmax=10, ...) {
+  opar = par(no.readonly = TRUE)
+  par(mfrow=c(2,1), mar=c(0,0,0,0), oma=c(4,4,1,4))
+  prey = .summary(x$N, alpha=alpha, nmax=nmax)
+  pred = .summary(x$P, alpha=alpha, nmax=nmax)
+  # prey
+  plot.new()
+  plot.window(xlim=prey$xlim, ylim=prey$ylim)
+  matplot(prey$rep, col="grey", type="l", lty=1, add=TRUE)
+  lines(prey$median, col="red", lwd=2)
+  lines(prey$ll, col="red", lty=3)
+  lines(prey$ul, col="red", lty=3)
+  axis(2)
+  box()
+  mtext("PREY", 2, line=3)
+  # pred
+  plot.new()
+  plot.window(xlim=pred$xlim, ylim=pred$ylim)
+  matplot(pred$rep, col="grey", type="l", lty=1, add=TRUE)
+  lines(pred$median, col="blue", lwd=2)
+  lines(pred$ll, col="blue", lty=3)
+  lines(pred$ul, col="blue", lty=3) 
+  axis(4)
+  axis(1)
+  box()
+  mtext("PREDATOR", 4, line=3)
   
-  # 'real' parameters
-  par_real = list(r=r, l=l, K=K, alpha=alpha, gamma=gamma, initial=list(N=N0, P=P0))
+  par(opar)
   
-  pop = .PredatorPreyModel(par=par_real, T=T)
-  
-  # observed abundances
-  n = rapply(pop, f=jitter, how = "list") 
-  
-  main.folder   = file.path(path, "PredatorPreyDemo")
-  data.folder   = file.path(main.folder, "data")
-  
-  if(!file.exists(data.folder)) dir.create(data.folder, recursive=TRUE)
-  
-  for(i in c("prey", "predator")) {
-    ifile = paste0(i, ".csv")
-    dat = matrix(n[[i]], ncol=1)
-    colnames(dat) = i
-    write.csv(dat, file.path(data.folder, ifile))
-  }
-  
-  # parInfo.csv
-  
-  parInfo = list()
-  parInfo$guess = list(r=0.1, l=0.1, K=1.1*max(n$prey), alpha=0.05, gamma=0.1, initial=list(N=n$prey[1], P=n$predator[1]))
-  parInfo$lower = list(r=0, l=0, K=0.25*max(n$prey), alpha=0, gamma=0, initial=list(N=0.5*n$prey[1], P=0.5*n$predator[1]))
-  parInfo$upper = list(r=2, l=2, K=5*max(n$prey), alpha=1, gamma=1, initial=list(N=1.5*n$prey[1], P=1.5*n$predator[1]))
-  parInfo$phase = list(r=1, l=1, K=1, alpha=1, gamma=1, initial=list(N=NA, P=NA))
-  
-  # calibrationInfo.csv
-  
-  calibrationInfo = list()
-  calibrationInfo$variable  = c("prey", "predator")
-  calibrationInfo$type      = "lnorm2"
-  calibrationInfo$calibrate = TRUE
-  calibrationInfo$weights   = 1
-  calibrationInfo$useData   = TRUE
-  
-  calibrationInfo = as.data.frame(calibrationInfo)
-  
-  write.csv(calibrationInfo, file.path(main.folder, "calibrationInfo.csv"), row.names=FALSE)
-  
-  constants = list(T=T)
-  
-  output = c(list(path=main.folder, par=par_real), constants, parInfo)
-  
-  return(output)
+  return(invisible())
   
 }
-
-# Auxiliar functions ------------------------------------------------------
 
 
 

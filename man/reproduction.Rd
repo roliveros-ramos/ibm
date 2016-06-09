@@ -9,7 +9,9 @@ reproduction(object, rates, ...)
 \arguments{
 \item{object}{The population object, containing the information about individuals.}
 
-\item{rate}{The reproduction rate or rates.}
+\item{rates}{The reproduction rate or rates.}
+
+\item{\dots}{Additional arguments for different methods.}
 }
 \description{
 This functions performs the 'reproduction' process over an object,
