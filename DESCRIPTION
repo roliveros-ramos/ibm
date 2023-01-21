@@ -1,5 +1,5 @@
 Package: ibm
-Version: 0.1.0.9000
+Version: 0.2.0.9000
 Authors@R: c(
     person("Ricardo", "Oliveros-Ramos", email="ricardo.oliveros@gmail.com", role=c("aut", "cre")))
 Title: Individual Based Models in R
@@ -17,4 +17,4 @@ License: GPL-2
 URL: http://roliveros-ramos.github.io/ibm
 BugReports: https://github.com/roliveros-ramos/ibm/issues
 LinkingTo: Rcpp
-RoxygenNote: 5.0.1
+RoxygenNote: 7.2.1
