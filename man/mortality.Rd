@@ -22,4 +22,3 @@ for a particular specification of the population.
 The rate can be a single value or a value for each individual calculated
 externally. No recycling is allowed.
 }
-

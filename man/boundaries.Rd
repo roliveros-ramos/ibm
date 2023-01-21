@@ -18,4 +18,3 @@ Set spatial restrictions to the domain.
 Boundaries is a generic and methods can be written. The default
 applies simmetric boundaries (dynamics over a torus) or reflexive barriers.
 }
-

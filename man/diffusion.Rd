@@ -22,4 +22,3 @@ The dimension is automatically calculated from the number of columns of the obje
 \details{
 This functions apply a brownian diffusion to a set of point coordinates.
 }
-
