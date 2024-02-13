@@ -19,6 +19,8 @@
 #' be saved?
 #' @param verbose Boolean, to print population sizes by step?
 #' @param maxpop Maximum population size. If predator or prey population size
+#' @param fill Value to initially fill the population arrays. Default to NA, 0 is an option too.
+#' @param probs Vector of probabilities to compute quantiles of the predator-prey interactions. 
 #' get bigger, the simulation ends.
 #' @return A list with the following elements:
 #' \item{N}{A matrix with prey population sizes by time (rows) and replicates (columns)}
@@ -30,9 +32,9 @@
 #' @examples
 #' \dontrun{
 #' set.seed(880820)
-#' par = list(alpha=5e-4, beta=5e-4, r=0.1, m=0.05, D=list(N=8e-5, P=8e-5), 
+#' par = list(alpha=5e-4, gamma=0.5, r=0.1, m=0.05, D=list(N=8e-5, P=8e-5), 
 #' L=list(N=0.2, P=0.2))
-#' N0 = with(par, m/(2*beta*L$P))
+#' N0 = with(par, m/(2*gamma*alpha*L$P))
 #' P0 = with(par, r/(2*alpha*L$N))
 #' par$initial = list(N=round(N0), P=round(P0))
 #' sim = localLotkaVolterra(par, T=240, replicates=100, maxpop = 1e4)
@@ -40,7 +42,8 @@
 #' } 
 #' @export
 localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE, 
-                              spatial=FALSE, verbose=FALSE, maxpop=1e6) {
+                              spatial=FALSE, verbose=FALSE, maxpop=1e6, fill=NA,
+                              probs=seq(0, 1, 0.01)) {
   
   if(isTRUE(spatial) & replicates!=1)
     stop("Spatial outputs only available for 1 replicate.")
@@ -48,33 +51,55 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
   N = array(dim=c(T+1, replicates))
   P = array(dim=c(T+1, replicates))
   
+  NPq = array(dim=c(T, length(probs), replicates))
+  PNq = array(dim=c(T, length(probs), replicates))
+  
+  NP = array(dim=c(T, replicates))
+  PN = array(dim=c(T, replicates))
+  
   for(irep in seq_len(replicates)) {
     xtime = Sys.time()
     sim = .localLotkaVolterra(par=par, T=T, dim=dim, periodic=periodic, 
-                              spatial=spatial, verbose=FALSE, maxpop=1e6) 
+                              spatial=spatial, verbose=verbose, maxpop=maxpop, fill=fill,
+                              probs=probs) 
     xtime = c(Sys.time() - xtime)
     N[, irep] = sim$N  
     P[, irep] = sim$P  
-    cat(sprintf("Replicate %d - Ellapsed %0.2fs\n", irep, xtime))
+    
+    NP[, irep] = sim$NP  # median
+    PN[, irep] = sim$PN  # median
+    
+    NPq[, , irep] = sim$NPq
+    PNq[, , irep] = sim$PNq
+    
+    if(verbose) message(sprintf("Replicate %d - Ellapsed %0.2fs\n", irep, xtime))
     
   }
   
-  output = list(N=N, P=P)
+  output = list(N=N, P=P, NP=NP, PN=PN)
   class(output) = c("ibm.LLV", class(output))
   return(output)
 }
 
 # One trajectory ----------------------------------------------------------
 .localLotkaVolterra = function(par, T, dim=1, periodic=TRUE, spatial=FALSE, 
-                               verbose=FALSE, maxpop=1e6) {
+                               verbose=FALSE, maxpop=1e6, fill=NA,
+                               probs=seq(0, 1, 0.01)) {
   
 
   par$sd = lapply(par$D, FUN = function(x) sqrt(2*x))
+  par$beta = par$gamma*par$alpha
+  
+  probs = sort(unique(pmin(pmax(c(0.5, probs), 0), 1)))
   
   # Initializing population vectors
   
-  N = array(dim=T+1)
-  P = array(dim=T+1)
+  N = array(fill, dim=T+1)
+  P = array(fill, dim=T+1)
+  
+  PN = array(NA, dim=c(T, length(probs)))
+  NP = array(NA, dim=c(T, length(probs)))
+  
   pop = NULL
   
   N[1] = par$initial$N
@@ -100,6 +125,9 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
     # (local) predation
     predation = localPredationInteractions(pop=tpop, R=par$L, N=N[t], P=P[t])
     
+    PN[t, ] = quantile(predation$PN/N[t], probs = probs, na.rm=TRUE)
+    NP[t, ] = quantile(predation$NP/P[t], probs = probs, na.rm=TRUE)
+    
     newN  = reproduction(N[t], rates=par$r)    
     newP  = reproduction(P[t], rates=par$beta*predation$PN)
     
@@ -119,8 +147,8 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
     tpop$N[seq_len(N[t+1]), ] = tpop$N[c(survN, newN), ]
     tpop$P[seq_len(P[t+1]), ] = tpop$P[c(survP, newP), ]
    
-    if(N[t+1]<N[t]) tpop$N[seq(N[t+1]+1, N[t]), ] = NA
-    if(P[t+1]<P[t]) tpop$P[seq(P[t+1]+1, P[t]), ] = NA
+    if(N[t+1]<N[t]) tpop$N[seq(N[t+1]+1, nrow(tpop$N)), ] = NA
+    if(P[t+1]<P[t]) tpop$P[seq(P[t+1]+1, nrow(tpop$P)), ] = NA
       
     if(isTRUE(spatial)) {
       pop[, , 1, t+1] = tpop$N
@@ -128,14 +156,18 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
     }
     
     if(isTRUE(verbose)) {
-      cat("t=", t, ", N=", N[t+1], ", P=", P[t+1],"\n")
+      message("t=", t, ", N=", N[t+1], ", P=", P[t+1],"\n")
     }
     
   }
   
   xlim = max(N, P, na.rm=TRUE)
    
-  output = list(N = as.numeric(N), P = as.numeric(P), pop=pop[xlim, , , ])
+  output = list(N = as.numeric(N), P = as.numeric(P), 
+                NPq = NP[, -1], PNq = PN[, -1], 
+                NP  = as.numeric(NP[, 1]),  PN  = as.numeric(PN[, 1]), 
+                pop = pop[xlim, , , ])
+  
   return(output)
   
 }
