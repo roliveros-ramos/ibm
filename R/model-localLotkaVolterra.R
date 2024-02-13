@@ -48,6 +48,8 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
   if(isTRUE(spatial) & replicates!=1)
     stop("Spatial outputs only available for 1 replicate.")
   
+  probs = sort(unique(pmin(pmax(probs, 0), 1)))
+  
   N = array(dim=c(T+1, replicates))
   P = array(dim=c(T+1, replicates))
   
@@ -86,11 +88,10 @@ localLotkaVolterra = function(par, T, replicates=1, dim=1, periodic=TRUE,
                                verbose=FALSE, maxpop=1e6, fill=NA,
                                probs=seq(0, 1, 0.01)) {
   
+  probs = c(0.5, probs) # add median first, is removed later.
 
   par$sd = lapply(par$D, FUN = function(x) sqrt(2*x))
   par$beta = par$gamma*par$alpha
-  
-  probs = sort(unique(pmin(pmax(c(0.5, probs), 0), 1)))
   
   # Initializing population vectors
   
