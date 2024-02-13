@@ -60,7 +60,7 @@ brownian3D = function(object, sd, N=NULL, ...) {
 # sampling ----------------------------------------------------------------
 
 .checkRates = function(rates, n) {
-  if(length(rates)==1) rates = rep(rates, length=n)
+  if(length(rates)==1) rates = rep_len(rates, length.out=n)
   if(length(rates)!=n) stop("Rates and population size do not match.") 
   rates = pmin(pmax(rates, 0),1)
   if(any(is.na(rates))) warning("NA rates are being taken as zero.")
