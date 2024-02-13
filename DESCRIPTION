@@ -14,7 +14,8 @@ Imports:
     stats,
     graphics
 License: GPL-2
-URL: http://roliveros-ramos.github.io/ibm
+URL: https://roliveros-ramos.github.io/ibm
 BugReports: https://github.com/roliveros-ramos/ibm/issues
 LinkingTo: Rcpp
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
+Encoding: UTF-8
