@@ -27,9 +27,3 @@ plot(sim)
 Ricardo Oliveros-Ramos
 <ricardo.oliveros@gmail.com>
 }
-\keyword{agent}
-\keyword{based}
-\keyword{ibm,}
-\keyword{individual}
-\keyword{models}
-\keyword{models,}

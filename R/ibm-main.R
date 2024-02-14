@@ -10,7 +10,6 @@
 #' @docType package
 #' @author Ricardo Oliveros-Ramos
 #' <ricardo.oliveros@@gmail.com>
-#' @keywords ibm, individual based models, agent based models
 #' @examples
 #' \dontrun{
 #' set.seed(880820)
